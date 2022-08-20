@@ -39,6 +39,10 @@ void() W_Precache =
 	precache_sound ("weapons/grenade.wav");	// grenade launcher
 	precache_sound ("weapons/bounce.wav");		// grenade bounce
 	precache_sound ("weapons/shotgn2.wav");	// super shotgun
+	precache_model ("progs/lavaball.mdl");
+	
+	precache_model ("progs/v_spike.mdl");
+
 };
 
 float() crandom =
@@ -537,10 +541,9 @@ void() W_FireLightning =
 
 void() GrenadeExplode =
 {
-	T_RadiusDamage (self, self.owner, 120, world);
-
+	
 	WriteByte (MSG_BROADCAST, SVC_TEMPENTITY);
-	WriteByte (MSG_BROADCAST, TE_EXPLOSION);
+	WriteByte (MSG_BROADCAST, TE_KNIGHTSPIKE);
 	WriteCoord (MSG_BROADCAST, self.origin_x);
 	WriteCoord (MSG_BROADCAST, self.origin_y);
 	WriteCoord (MSG_BROADCAST, self.origin_z);
@@ -554,6 +557,7 @@ void() GrenadeTouch =
 		return;		// don't explode on owner
 	if (other.takedamage == DAMAGE_AIM)
 	{
+		T_Damage (other, self.owner, self.owner, 20, self.origin);
 		GrenadeExplode();
 		return;
 	}
@@ -569,49 +573,97 @@ void() GrenadeTouch =
 W_FireGrenade
 ================
 */
+
+//function called for blaster
+void() blastLaunch = 
+{
+	local	entity	head;
+	local	vector	org;
+	
+	head = findradius(self.origin, 120);	
+	while (head)
+	{
+		if (head != self)
+		{
+			if (head.takedamage)
+			{
+				org = head.origin + (head.mins + head.maxs)*0.5;				
+				head.flags = head.flags - FL_ONGROUND;
+				head.velocity = '0 0 1' * 400 + normalize(self.owner.origin - org) * 200;
+				T_Damage (head, self.owner, self.owner, 20, self.origin);
+			}
+		}
+		head = head.chain;
+	}
+	
+	
+	WriteByte (MSG_BROADCAST, SVC_TEMPENTITY);
+	WriteByte (MSG_BROADCAST, TE_KNIGHTSPIKE);
+	WriteCoord (MSG_BROADCAST, self.origin_x);
+	WriteCoord (MSG_BROADCAST, self.origin_y);
+	WriteCoord (MSG_BROADCAST, self.origin_z);
+	
+	self.velocity = '0 0 1' * 500 + crandom()*v_right*10 + crandom()*v_up*10;
+	self.avelocity = '300 300 300';
+
+	self.angles = vectoangles(self.velocity);
+	self.touch = GrenadeTouch;
+	
+	self.solid = SOLID_BBOX;
+	self.movetype = MOVETYPE_BOUNCE;
+	// set missile duration
+	self.nextthink = time + .6;
+	self.think = GrenadeExplode;
+
+}
+void() spawnBall=
+{
+	self.nextthink = time + .1;
+	self.think = blastLaunch;
+
+	setmodel (self, "progs/v_spike.mdl"); //"progs/lavaball.mdl"
+}
+
+
 void() W_FireGrenade =
 {
-	local	entity missile;
-	
-	self.currentammo = self.ammo_rockets = self.ammo_rockets - 1;
-	
-	sound (self, CHAN_WEAPON, "weapons/grenade.wav", 1, ATTN_NORM);
-	//stuffcmd (self, "vibrate tactile/weapons/grenade.bnvib");
-
-	self.punchangle_x = -2;
-
-	missile = spawn ();
-	missile.owner = self;
-	missile.movetype = MOVETYPE_BOUNCE;
-	missile.solid = SOLID_BBOX;
-	missile.classname = "grenade";
-		
-// set missile speed	
-
 	makevectors (self.v_angle);
-
-	if (self.v_angle_x)
-		missile.velocity = v_forward*600 + v_up * 200 + crandom()*v_right*10 + crandom()*v_up*10;
-	else
+	local vector shot_org = self.origin;
+	local vector shot_dir = v_forward;
+	
+	traceline (shot_org, shot_org + shot_dir*2000, TRUE, self);
+	local vector shot_end = trace_endpos;
+	local vector shot_vec = shot_end - shot_org;
+	local float shot_dist = vlen(shot_vec);
+	
+	local float wait = time;
+	local float blast_count = shot_dist/150;
+	local float i = blast_count;
+	local	entity missile;
+	while(i >= 0)
 	{
-		missile.velocity = aim(self, 10000);
-		missile.velocity = missile.velocity * 600;
-		missile.velocity_z = 200;
+		local float pct = i/blast_count;
+		local entity tmpBlast = spawn();
+		local vector cur_org = shot_org + shot_vec * pct;
+		
+		traceline (cur_org, cur_org + '0 0 -1'*2000, FALSE, self);
+			
+		missile = spawn ();
+		missile.owner = self;
+		missile.movetype = MOVETYPE_NONE;
+		missile.solid = SOLID_NOT;
+		missile.classname = "grenade";
+
+		missile.nextthink = wait;
+		missile.think = spawnBall;
+
+		//setmodel (missile, "progs/lavaball.mdl");
+		setsize (missile, '0 0 0', '0 0 0');		
+		setorigin (missile, trace_endpos + '0 0 5');
+		wait = wait + .35;
+		i = i - 1;
 	}
-
-	missile.avelocity = '300 300 300';
-
-	missile.angles = vectoangles(missile.velocity);
 	
-	missile.touch = GrenadeTouch;
-	
-	// set missile duration
-	missile.nextthink = time + 2.5;
-	missile.think = GrenadeExplode;
-
-	setmodel (missile, "progs/grenade.mdl");
-	setsize (missile, '0 0 0', '0 0 0');		
-	setorigin (missile, self.origin);
 };
 
 

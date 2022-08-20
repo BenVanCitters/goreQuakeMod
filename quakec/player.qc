@@ -101,7 +101,20 @@ $frame axattd1 axattd2 axattd3 axattd4 axattd5 axattd6
 PLAYER
 ==============================================================================
 */
-
+//sellf is understood to be an entity with a position, and a min and max bbox
+vector(entity ent) randPosInBox =
+{
+	//local entity owner = self.enemy;
+	local float width = ent.maxs_x - ent.mins_x;
+	local float depth = ent.maxs_y - ent.mins_y;
+	local float height = ent.maxs_z - ent.mins_z;
+	local vector org = '1 0 0' * random() * width + 
+	                   '0 1 0' * random() * depth + 
+	                   '0 0 1' * random() * height;
+	org = org + ent.origin;
+	org = org + ent.mins;
+	return org;
+}
 void() GibFountThink=
 {
 	if((time > self.walkframe) || (self.frame < 1))
@@ -121,7 +134,9 @@ void() GibFountThink=
 	}
 	
 	local entity new = spawn();
-	new.origin = self.origin;
+	//new.origin = randPosInBox();//self.origin;
+	
+	setorigin (new, randPosInBox(self));
 	setmodel (new, gibname);
 	setsize (new, '0 0 0', '0 0 0');
 	local vector rvec = '0 0 0';
@@ -155,6 +170,8 @@ void(entity owner, vector vel_dir, float duration, float maxcount) createGibFoun
 	gibFount.walkframe = time + duration; //when to stop
 	gibFount.view_ofs = vel_dir;
 	gibFount.frame = maxcount;
+	gibFount.mins = owner.mins;
+	gibFount.maxs = owner.maxs;
 	self.deadflag = DEAD_DEAD;
 	//bprint("hell");
 }
@@ -573,7 +590,7 @@ void(string gibname, float dm) ThrowGib =
 	local	entity new;
 
 	new = spawn();
-	new.origin = self.origin;
+	new.origin = randPosInBox(self);
 	setmodel (new, gibname);
 	setsize (new, '0 0 0', '0 0 0');
 	new.velocity = VelocityForDamage (dm);
