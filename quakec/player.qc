@@ -143,7 +143,9 @@ void() GibFountThink=
 	rvec_x = (random()*2-1)*25;
 	rvec_y = (random()*2-1)*25;
 	rvec_z = (random()*2-1)*25;
-	new.velocity = self.view_ofs  + rvec;
+	
+	local vector gibDir = normalize(self.enemy.dmg_origin - new.origin) * (self.enemy.health*11 );
+	new.velocity = gibDir  + rvec;
 	
 	new.movetype = MOVETYPE_GIB;
 	new.solid = SOLID_NOT;
@@ -159,7 +161,7 @@ void() GibFountThink=
 	self.frame = self.frame -1;
 	self.nextthink = time;
 }
-void(entity owner, vector vel_dir, float duration, float maxcount) createGibFountain =
+void(entity owner, float duration, float maxcount) createGibFountain =
 {
 	local entity gibFount = spawn();
 	gibFount.origin = self.origin;
@@ -168,8 +170,7 @@ void(entity owner, vector vel_dir, float duration, float maxcount) createGibFoun
 	gibFount.think = GibFountThink;
 	gibFount.nextthink = time;
 	gibFount.walkframe = time + duration; //when to stop
-	gibFount.view_ofs = vel_dir;
-	gibFount.frame = maxcount;
+	gibFount.frame = maxcount; //cout
 	gibFount.mins = owner.mins;
 	gibFount.maxs = owner.maxs;
 	self.deadflag = DEAD_DEAD;
@@ -677,7 +678,8 @@ void() PlayerDie =
 	if (self.health < -40)
 	{
 		GibPlayer ();
-		createGibFountain(self, '0 15 0', 0.5, 50);
+		local vector org = (self.mins + self.maxs)/2 + self.origin;
+		createGibFountain(self, 0.5, 50);
 		return;
 	}
 

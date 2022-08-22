@@ -255,9 +255,7 @@ void() dog_die =
 	if (self.health < -35)
 	{
 		sound (self, CHAN_VOICE, "player/udeath.wav", 1, ATTN_NORM);
-		local vector org = (self.mins + self.maxs)/2 + self.origin;
-		local vector gibDir = normalize(self.dmg_origin - org) * (self.health*17 );
-		createGibFountain(self, gibDir, 0.5, 50);
+		createGibFountain(self, 0.5, 50);
 		ThrowHead ("progs/h_dog.mdl", self.health);
 		return;
 	}
